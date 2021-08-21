@@ -3,6 +3,7 @@ program example;
 {$mode objfpc}{$H+}
 
 uses
+  {$IfDef Unix}cthreads,{$EndIf}
   Classes, SysUtils, barrier;
 
 type

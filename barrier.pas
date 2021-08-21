@@ -5,13 +5,14 @@ unit barrier;
 interface
 
 uses
-  SysUtils
-  {$IfDef WINDOWS}, win_barrier, windows{$EndIf};
+  SysUtils, unixtype
+  {$If defined(WINDOWS)}, win_barrier, windows
+  {$ElseIf defined(UNIX)}, pthreads{$EndIf};
 
 type
 
   { ESystemError }
-  TErrorCode = {$IfDef WINDOWS}DWORD{$EndIf};
+  TErrorCode = {$If defined(WINDOWS)}DWORD{$ElseIf defined(UNIX)}Integer{$EndIf};
 
   ESystemError = class(Exception)
   private
@@ -26,7 +27,7 @@ type
 
   TBarrier = object
   private
-    FBarrier: {$IfDef WINDOWS}TSYNCHRONIZATION_BARRIER{$EndIf};
+    FBarrier: {$If defined(WINDOWS)}TSYNCHRONIZATION_BARRIER{$ElseIf defined(UNIX)}pthread_barrier_t{$EndIf};
   public
     procedure Enter;
 
@@ -47,25 +48,49 @@ end;
 { TBarrier }
 
 procedure TBarrier.Enter;
+{$IfDef UNIX}
+var
+  ret: cint;
+{$EndIf}
 begin
-  {$IfDef WINDOWS}
+  {$If defined(WINDOWS)}
   EnterSynchronizationBarrier(@FBarrier, 0);
+  {$ElseIf defined(UNIX)}
+  ret := pthread_barrier_wait(@FBarrier);
+  if (ret <> 0) and (ret <> PTHREAD_BARRIER_SERIAL_THREAD) then
+    raise ESystemError.Create('Error calling pthread_barrier_wait', ret);
   {$EndIf}
 end;
 
 constructor TBarrier.Initialize(NumThreads: Integer);
+{$IfDef UNIX}
+var
+  ret: cint;
+{$EndIf}
 begin
-  {$IfDef WINDOWS}
+  {$If defined(WINDOWS)}
   if not InitializeSynchronizationBarrier(@FBarrier, NumThreads, -1) then
     raise ESystemError.Create('Error calling InitializeSynchronizationBarrier', GetLastError);
+  {$ElseIf defined(UNIX)}
+  ret := pthread_barrier_init(@FBarrier, nil, NumThreads);
+  if ret <> 0 then
+    raise ESystemError.Create('Error calling pthread_barrier_init', ret);
   {$EndIf}
 end;
 
 destructor TBarrier.Destroy;
+{$IfDef UNIX}
+var
+  ret: cint;
+{$EndIf}
 begin
-  {$IfDef WINDOWS}
+  {$If defined(WINDOWS)}
   if not DeleteSynchronizationBarrier(@FBarrier) then
     raise ESystemError.Create('Error calling DeleteSynchronizationBarrier', GetLastError);
+  {$ElseIf defined(UNIX)}
+  ret := pthread_barrier_destroy(@FBarrier);
+  if ret <> 0 then
+    raise ESystemError.Create('Error calling pthread_barrier_destroy', ret);
   {$EndIf}
 end;
 
