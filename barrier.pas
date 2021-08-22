@@ -5,7 +5,7 @@ unit barrier;
 interface
 
 uses
-  SysUtils, unixtype
+  SysUtils
   {$If defined(WINDOWS)}, win_barrier, windows
   {$ElseIf defined(UNIX)}, pthreads{$EndIf};
 
@@ -50,7 +50,7 @@ end;
 procedure TBarrier.Enter;
 {$IfDef UNIX}
 var
-  ret: cint;
+  ret: Integer;
 {$EndIf}
 begin
   {$If defined(WINDOWS)}
@@ -81,7 +81,7 @@ end;
 destructor TBarrier.Destroy;
 {$IfDef UNIX}
 var
-  ret: cint;
+  ret: Integer;
 {$EndIf}
 begin
   {$If defined(WINDOWS)}
